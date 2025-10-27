@@ -2,7 +2,6 @@
 *.pdf
 *.pyc
 *.npy
-*.txt
 *.out
 *.err
 *.mat
