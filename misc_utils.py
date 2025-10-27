@@ -158,25 +158,25 @@ def _single_cell(unit_type, num_units, forget_bias, dropout, prt,
     # Cell Type
     if unit_type == "lstm":
         prt.print_out("  LSTM, forget_bias=%g" % forget_bias, new_line=False)
-        single_cell = tf.contrib.rnn.BasicLSTMCell(
+        single_cell = tf.compat.v1.nn.rnn_cell.BasicLSTMCell(
                 num_units,
                 forget_bias=forget_bias)
     elif unit_type == "gru":
         prt.print_out("  GRU", new_line=False)
-        single_cell = tf.contrib.rnn.GRUCell(num_units)
+        single_cell = tf.compat.v1.nn.rnn_cell.GRUCell(num_units)
     else:
         raise ValueError("Unknown unit type %s!" % unit_type)
 
     # Dropout (= 1 - keep_prob)
     if dropout > 0.0:
-        single_cell = tf.contrib.rnn.DropoutWrapper(
+        single_cell = tf.compat.v1.nn.rnn_cell.DropoutWrapper(
                 cell=single_cell, input_keep_prob=(1.0 - dropout))
         prt.print_out("  %s, dropout=%g " %(type(single_cell).__name__, dropout),
                                         new_line=False)
 
     # Residual
     if residual_connection:
-        single_cell = tf.contrib.rnn.ResidualWrapper(single_cell)
+        single_cell = tf.compat.v1.nn.rnn_cell.ResidualWrapper(single_cell)
         prt.print_out("  %s" % type(single_cell).__name__, new_line=False)
 
     # Device Wrapper
@@ -195,7 +195,7 @@ def _cell_list(unit_type, num_units, num_layers, num_residual_layers,
     cell_list = []
     for i in range(num_layers):
         prt.print_out("  cell %d" % i, new_line=False)
-        dropout = dropout if mode == tf.contrib.learn.ModeKeys.TRAIN else 0.0
+        dropout = dropout if mode == tf.compat.v1.estimator.ModeKeys.TRAIN else 0.0
         single_cell = _single_cell(
                 unit_type=unit_type,
                 num_units=num_units,
@@ -225,7 +225,7 @@ def create_rnn_cell(unit_type, num_units, num_layers, num_residual_layers,
         forget_bias: the initial forget bias of the RNNCell(s).
         dropout: floating point value between 0.0 and 1.0:
             the probability of dropout.  this is ignored if `mode != TRAIN`.
-        mode: either tf.contrib.learn.TRAIN/EVAL/INFER
+        mode: either tf.compat.v1.estimator.ModeKeys.TRAIN/EVAL/INFER
         num_gpus: The number of gpus to use when performing round-robin
             placement of layers.
         base_gpu: The gpu device id to use for the first RNN cell in the
@@ -250,7 +250,7 @@ def create_rnn_cell(unit_type, num_units, num_layers, num_residual_layers,
     if len(cell_list) == 1:  # Single layer.
         return cell_list[0]
     else:  # Multi layers
-        return tf.contrib.rnn.MultiRNNCell(cell_list)
+        return tf.compat.v1.nn.rnn_cell.MultiRNNCell(cell_list)
 
 def gradient_clip(gradients, params, max_gradient_norm):
     """Clipping gradients of a model."""
@@ -297,15 +297,15 @@ def add_summary(summary_writer, global_step, tag, value):
 def get_config_proto(log_device_placement=False, allow_soft_placement=True):
     # GPU options:
     # https://www.tensorflow.org/versions/r0.10/how_tos/using_gpu/index.html
-    config_proto = tf.ConfigProto(
+    config_proto = tf.compat.v1.ConfigProto(
             log_device_placement=log_device_placement,
             allow_soft_placement=allow_soft_placement)
     config_proto.gpu_options.allow_growth = True
     return config_proto
 
 def check_tensorflow_version():
-    if tf.__version__ < "1.2.1":
-        raise EnvironmentError("Tensorflow version must >= 1.2.1")
+    if tf.__version__ < "2.0.0":
+        raise EnvironmentError("Tensorflow version must >= 2.0.0")
 
 def debug_tensor(s, msg=None, summarize=10):
     """Print the shape and value of a tensor at test time. Return a new tensor."""

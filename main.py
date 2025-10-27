@@ -5,6 +5,9 @@ from tqdm import tqdm
 import tensorflow as tf
 import time
 
+# Enable TensorFlow 2.x behavior
+tf.compat.v1.disable_eager_execution()
+
 from configs import ParseParams
 
 from shared.decode_step import RNNDecodeStep
@@ -36,9 +39,19 @@ def load_task_specific_components(task):
     return DataGenerator, Env, reward_func, AttentionActor, AttentionCritic
 
 def main(args, prt):
-    config = tf.ConfigProto()
+    # Configure GPU settings for TensorFlow 2.x
+    gpus = tf.config.experimental.list_physical_devices('GPU')
+    if gpus:
+        try:
+            for gpu in gpus:
+                tf.config.experimental.set_memory_growth(gpu, True)
+        except RuntimeError as e:
+            print(e)
+    
+    # Create session with TensorFlow 2.x compatibility
+    config = tf.compat.v1.ConfigProto()
     config.gpu_options.allow_growth = True
-    sess = tf.Session(config=config)
+    sess = tf.compat.v1.Session(config=config)
 
     # load task specific classes
     DataGenerator, Env, reward_func, AttentionActor, AttentionCritic = \
@@ -97,7 +110,7 @@ if __name__ == "__main__":
     if random_seed is not None and random_seed > 0:
         prt.print_out("# Set random seed to %d" % random_seed)
         np.random.seed(random_seed)
-        tf.set_random_seed(random_seed)
-    tf.reset_default_graph()
+        tf.compat.v1.set_random_seed(random_seed)
+    tf.compat.v1.reset_default_graph()
 
     main(args, prt)

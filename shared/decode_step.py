@@ -171,13 +171,20 @@ class RNNDecodeStep(DecodeStep):
         self.rnn_layers = rnn_layers     
 #         self.dropout = tf.placeholder(tf.float32,name='decoder_rnn_dropout')
 
-        # build a multilayer LSTM cell
-        single_cell = tf.nn.rnn_cell.BasicLSTMCell(hidden_dim, 
-            forget_bias=forget_bias)
-        self.dropout = tf.placeholder(tf.float32,name='decoder_rnn_dropout') 
-        single_cell = tf.contrib.rnn.DropoutWrapper(
-                cell=single_cell, input_keep_prob=(1.0 - self.dropout))
-        self.cell = tf.nn.rnn_cell.MultiRNNCell([single_cell] * rnn_layers)
+        # build a multilayer LSTM cell using Keras 3 compatible approach
+        self.dropout = tf.compat.v1.placeholder(tf.float32,name='decoder_rnn_dropout') 
+        
+        # Create LSTM cells using Keras 3
+        self.lstm_layers = []
+        for i in range(rnn_layers):
+            lstm_layer = tf.keras.layers.LSTM(hidden_dim, 
+                                            return_sequences=False, 
+                                            return_state=True,
+                                            name=f'lstm_layer_{i}')
+            self.lstm_layers.append(lstm_layer)
+        
+        self.rnn_layers = rnn_layers
+        self.hidden_dim = hidden_dim
 
     def get_logit_op(self,
                     decoder_inp,
@@ -208,11 +215,30 @@ class RNNDecodeStep(DecodeStep):
         """
 
 #         decoder_inp = tf.reshape(decoder_inp,[-1,1,self.hidden_dim])
-        _ , decoder_state = tf.nn.dynamic_rnn(self.cell,
-                                              decoder_inp,
-                                              initial_state=decoder_state,
-                                              scope=self._scope+'Decoder/LSTM/rnn')
-        hy = decoder_state[-1].h
+        # Use Keras 3 LSTM layers with proper state handling
+        if decoder_state is None:
+            # Initialize states for all layers
+            decoder_state = []
+            for i in range(self.rnn_layers):
+                decoder_state.append([tf.zeros([tf.shape(decoder_inp)[0], self.hidden_dim]), 
+                                    tf.zeros([tf.shape(decoder_inp)[0], self.hidden_dim])])
+        
+        # Process through each LSTM layer
+        current_input = decoder_inp
+        new_states = []
+        
+        for i, lstm_layer in enumerate(self.lstm_layers):
+            if i < len(decoder_state):
+                initial_state = decoder_state[i]
+            else:
+                initial_state = None
+                
+            output, h_state, c_state = lstm_layer(current_input, initial_state=initial_state)
+            new_states.append([h_state, c_state])
+            current_input = tf.expand_dims(output, 1)  # Add time dimension for next layer
+        
+        decoder_state = new_states
+        hy = decoder_state[-1][0]  # Get hidden state from last layer
 
         # glimpses
         for i in range(self.n_glimpses):

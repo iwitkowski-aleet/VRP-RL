@@ -144,7 +144,7 @@ class Env(object):
         self.n_nodes = args['n_nodes']
         self.n_cust = args['n_cust']
         self.input_dim = args['input_dim']
-        self.input_data = tf.placeholder(tf.float32,\
+        self.input_data = tf.compat.v1.placeholder(tf.float32,\
             shape=[None,self.n_nodes,self.input_dim])
 
         self.input_pnt = self.input_data[:,:,:2]

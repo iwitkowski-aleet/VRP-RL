@@ -90,12 +90,12 @@ def openAI_entropy(logits):
         ea0 = tf.exp(a0)
         z0 = tf.reduce_sum(ea0, 2, keepdims=True)
         p0 = ea0 / z0
-        return tf.reduce_mean(tf.reduce_sum(p0 * (tf.log(z0) - a0), 2))
+        return tf.reduce_mean(tf.reduce_sum(p0 * (tf.math.log(z0) - a0), 2))
 
 
 def softmax_entropy(p0):
         # Normal information theory entropy by Shannon
-        return - tf.reduce_sum(p0 * tf.log(p0 + 1e-6), axis=1)
+        return - tf.reduce_sum(p0 * tf.math.log(p0 + 1e-6), axis=1)
 
 def Dist_mat(A):
         # A is of shape [batch_size x nnodes x 2].
